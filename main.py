@@ -20,14 +20,6 @@ def KFoldSplit(X, y):
         y_test = [y[i] for i in test_index]
 
         yield X_train, X_test, y_train, y_test
-
-def one_hot(Y, prefix):
-    one_hot = pd.get_dummies(Y)
-    names = []
-    for col in one_hot.columns:
-        names.append(prefix + '_' + col)
-    one_hot.columns = names
-    return one_hot
         
 def preprocess(filename, sep=','):
     # load data
@@ -41,18 +33,40 @@ def preprocess(filename, sep=','):
     Y_texture = df.iloc[:, 7]
     X.drop(['color', 'texture', 'image', 'id', 'x', 'y', 'w', 'h'], axis=1, inplace=True)
     
+    
 #     encoding y
-    Y_color = one_hot(Y_color, "color")
-    # Y_texture = one_hot(Y_texture, "texture")
+    Y_color = np.array(Y_color)
+    Y_texture = np.array(Y_texture)
     
-    # return X, Y_color, Y_texture
-
-def train_color(X, y):
-    # train_test_split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
-    clf = svm.SVC()
-    clf.fit(X_train, y_train)
+#     print(X.head())
     
-    y_pred = clf.predict(X_test)
+    return X, Y_color, Y_texture
 
-preprocess("data/data_train.csv")
+def eval(y_test, y_pred):
+    accuracy = round(accuracy_score(y_test, y_pred), 3)
+    balanced_accu = round(balanced_accuracy_score(y_test, y_pred), 3)
+    
+    print('accuracy: ', accuracy)
+    print('balanced accuracy: ', balanced_accu)
+
+    return accuracy, balanced_accu
+
+def KFold_train(X, y):
+    accuracies = []
+    balanced_accuracies = []
+
+    for X_train, X_test, y_train, y_test in KFoldSplit(X, y):
+#         scaler = StandardScaler()
+#         X_train = scaler.fit_transform(X_train)
+#         X_test = scaler.transform(X_test)
+        
+        clf = svm.SVC(kernel='rbf', class_weight='balanced')
+        clf.fit(X_train,y_train)
+        y_pred = clf.predict(X_test)
+        accuracy, balanced = eval(y_test, y_pred)
+        accuracies.append(accuracy)
+#         balanced_accuracies.append(balanced)
+    print('Avg Accuracy: ', round(np.mean(accuracies), 3))
+#     print('Avg Balanced Accuracy: ', round(np.mean(balanced_accuracies), 3))
+
+X, Y_color, Y_texture = preprocess("data/data_train.csv")
